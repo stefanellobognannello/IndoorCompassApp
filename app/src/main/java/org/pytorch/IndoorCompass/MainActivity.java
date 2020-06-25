@@ -1,4 +1,4 @@
-package org.pytorch.helloworld;
+package org.pytorch.IndoorCompass;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -19,7 +19,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.FloatBuffer;
 import java.util.Arrays;
 
 import androidx.annotation.RequiresApi;
@@ -76,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
         // app/src/model/assets/model.pt
         module = Module.load(assetFilePath(this, "resnet18_finetuning_traced_2fps_200_4.pt"));
       } catch (IOException e) {
-        Log.e("PytorchHelloWorld", "Error reading assets", e);
+        Log.e("IndoorCompass", "Error reading assets", e);
         finish();
       }
 
@@ -117,9 +116,9 @@ public class MainActivity extends AppCompatActivity {
         midScoreIdx = (maxScoreIdx + 2) % 3;
       }
 
-      String className2 = ImageNetClasses.IMAGENET_CLASSES[maxScoreIdx];
-      String className1 = ImageNetClasses.IMAGENET_CLASSES[midScoreIdx];
-      String className0 = ImageNetClasses.IMAGENET_CLASSES[lowScoreIdx];
+      String className2 = IndoorCompassClasses.INDOORCOMPASS_CLASSES[maxScoreIdx];
+      String className1 = IndoorCompassClasses.INDOORCOMPASS_CLASSES[midScoreIdx];
+      String className0 = IndoorCompassClasses.INDOORCOMPASS_CLASSES[lowScoreIdx];
 
       //softmax on values
       double[] dscores=convertFloatsToDoubles(scores);
