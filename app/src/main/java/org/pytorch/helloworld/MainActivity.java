@@ -2,6 +2,7 @@ package org.pytorch.helloworld;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -19,7 +20,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.FloatBuffer;
+import java.util.Arrays;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 
@@ -33,14 +36,14 @@ public class MainActivity extends AppCompatActivity {
 
     Button capture = findViewById(R.id.button2);
 
-    capture.setOnClickListener(new View.OnClickListener(){
+    capture.setOnClickListener(new View.OnClickListener() {
 
       @Override
-      public void onClick(View view){
+      public void onClick(View view) {
 
         Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
-        startActivityForResult(cameraIntent,cameraRequestCode);
+        startActivityForResult(cameraIntent, cameraRequestCode);
 
       }
 
@@ -49,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
 
   }
 
+  @RequiresApi(api = Build.VERSION_CODES.N)
   @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
@@ -70,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
 
         // loading serialized torchscript module from packaged into app android asset model.pt,
         // app/src/model/assets/model.pt
-        module = Module.load(assetFilePath(this, "model_1fps_resnet_18_traced_500_3.pt"));
+        module = Module.load(assetFilePath(this, "resnet18_finetuning_traced_2fps_200_4.pt"));
       } catch (IOException e) {
         Log.e("PytorchHelloWorld", "Error reading assets", e);
         finish();
@@ -84,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
       // preparing input tensor
 
       float mean[] = new float[]{0.33210807f, 0.29329791f, 0.26337797f};
-      float std[]  = new float[]{0.24047631f, 0.23936823f, 0.24046722f};
+      float std[] = new float[]{0.24047631f, 0.23936823f, 0.24046722f};
       final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(bitmap, mean, std);
 
       // running the model
@@ -92,7 +96,6 @@ public class MainActivity extends AppCompatActivity {
 
       // getting tensor content as java array of floats
       final float[] scores = outputTensor.getDataAsFloatArray();
-
 
       // searching for the index with maximum score
       float maxScore = -Float.MAX_VALUE;
@@ -106,35 +109,38 @@ public class MainActivity extends AppCompatActivity {
         }
       }
 
-      if(scores[(maxScoreIdx + 1)%3] >scores[(maxScoreIdx + 2)%3]){
-        midScoreIdx=(maxScoreIdx + 1) %3;
-        lowScoreIdx=(maxScoreIdx + 2) %3;
-      }
-      else{
-        lowScoreIdx=(maxScoreIdx + 1) %3;
-        midScoreIdx=(maxScoreIdx + 2) %3;
+      if (scores[(maxScoreIdx + 1) % 3] > scores[(maxScoreIdx + 2) % 3]) {
+        midScoreIdx = (maxScoreIdx + 1) % 3;
+        lowScoreIdx = (maxScoreIdx + 2) % 3;
+      } else {
+        lowScoreIdx = (maxScoreIdx + 1) % 3;
+        midScoreIdx = (maxScoreIdx + 2) % 3;
       }
 
       String className2 = ImageNetClasses.IMAGENET_CLASSES[maxScoreIdx];
       String className1 = ImageNetClasses.IMAGENET_CLASSES[midScoreIdx];
       String className0 = ImageNetClasses.IMAGENET_CLASSES[lowScoreIdx];
 
+      //softmax on values
+      double[] dscores=convertFloatsToDoubles(scores);
+      double total = Arrays.stream(dscores).map(Math::exp).sum();
+      double val2 = Math.exp(scores[maxScoreIdx]) / total;
+      double val1 = Math.exp(scores[midScoreIdx]) / total;
+      double val0 = Math.exp(scores[lowScoreIdx]) / total;
       // showing className on UI
       TextView textView2 = findViewById(R.id.text2);
-      textView2.setText(className2);
+      textView2.setText(className2 +" "+round(val2*100,2)+"%");
 
       TextView textView1 = findViewById(R.id.text1);
-      textView1.setText(className1);
+      textView1.setText(className1+" "+round(val1*100,2)+"%");
 
       TextView textView0 = findViewById(R.id.text0);
-      textView0.setText(className0);
-
+      textView0.setText(className0+" "+round(val0*100,2)+"%");
 
 
     }
 
   }
-
 
 
   /**
@@ -159,5 +165,25 @@ public class MainActivity extends AppCompatActivity {
       }
       return file.getAbsolutePath();
     }
+  }
+
+  public static double[] convertFloatsToDoubles(float[] input) {
+    if (input == null) {
+      return null; // Or throw an exception - your choice
+    }
+    double[] output = new double[input.length];
+    for (int i = 0; i < input.length; i++) {
+      output[i] = input[i];
+    }
+    return output;
+  }
+
+  public static double round(double value, int places) {
+    if (places < 0) throw new IllegalArgumentException();
+
+    long factor = (long) Math.pow(10, places);
+    value = value * factor;
+    long tmp = Math.round(value);
+    return (double) tmp / factor;
   }
 }
